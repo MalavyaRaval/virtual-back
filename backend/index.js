@@ -10,18 +10,23 @@ const Event = require("./models/event.model");
 
 const express = require("express");
 const cors = require("cors");
-const app = express();
-
 const jwt = require("jsonwebtoken");
 const { authenticationToken } = require("./utilities");
 
-app.use(express.json());
+const app = express();
+const router = express.Router();
 
-app.use(
-  cors({
-    origin: "*",
-  })
-);
+app.use(express.json());
+app.use(cors({ origin: "*" }));
+
+// Middleware to check if user is authenticated
+const isAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  } else {
+    return res.status(401).json({ error: true, message: "Unauthorized" });
+  }
+};
 
 app.get("/", (req, res) => {
   res.json({ data: "hello" });
@@ -49,7 +54,7 @@ app.post("/create-account", async (req, res) => {
   const user = new User({
     fullName,
     email,
-    password, // Store password as plain text (not recommended for production)
+    password, // Store password as plain text
     address,
     address2,
     city,
@@ -177,7 +182,8 @@ app.post("/add-event", authenticationToken, async (req, res) => {
       food,
       custodian,
       description,
-      userId,
+      image,
+      createdBy: userId, // Add the userId to the event
     });
 
     await event.save();
@@ -258,7 +264,7 @@ app.get("/get-all-events", async (req, res) => {
 });
 
 // Delete Event
-app.delete("/delete-event/:eventId", async (req, res) => {
+app.delete("/delete-event/:eventId", authenticationToken, async (req, res) => {
   const eventId = req.params.eventId;
 
   try {
@@ -266,6 +272,14 @@ app.delete("/delete-event/:eventId", async (req, res) => {
 
     if (!event) {
       return res.status(404).json({ error: true, message: "Event not found" });
+    }
+
+    // Check if the event was created by the current user
+    if (event.createdBy.toString() !== req.user.userId.toString()) {
+      return res.status(403).json({
+        error: true,
+        message: "You do not have permission to delete this event",
+      });
     }
 
     await Event.deleteOne({ _id: eventId });
