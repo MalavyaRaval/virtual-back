@@ -241,11 +241,9 @@ app.put("/edit-account", authenticationToken, async (req, res) => {
 });
 
 // Get all Events
-app.get("/get-all-events", authenticationToken, async (req, res) => {
-  const userId = req.user.userId;
-
+app.get("/get-all-events", async (req, res) => {
   try {
-    const events = await Event.find({ userId }).sort({ date: -1 });
+    const events = await Event.find().sort({ date: -1 });
     return res.json({
       error: false,
       events,
