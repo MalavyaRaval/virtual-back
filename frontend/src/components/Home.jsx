@@ -112,9 +112,20 @@ const Home = () => {
     setShowModal(false);
   };
 
-  const handleDelete = (index) => {
+  const handleDelete = async (eventId) => {
     if (window.confirm("Are you sure you want to delete this event?")) {
-      setEvents(events.filter((_, i) => i !== index));
+      try {
+        const response = await axiosInstance.delete(`/delete-event/${eventId}`);
+
+        if (response.data && !response.data.error) {
+          getAllEvents();
+        } else {
+          console.log("Failed to delete event");
+        }
+      } catch (error) {
+        console.error("Error deleting event:", error);
+        console.log("Try Again handleDelete");
+      }
     }
   };
 
@@ -130,6 +141,25 @@ const Home = () => {
         error.response || error.message || error
       );
       console.log("Try Again setAllEvents");
+    }
+  };
+
+  const deletNote = async (noteData) => {
+    const noteId = noteData._id;
+    try {
+      const response = await axiosInstance.delete(`/delete-note/${noteId}`);
+
+      if (response.data && !response.data.error) {
+        return "asdfasdgfvbiaejnfjia";
+      }
+    } catch (error) {
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        console.log("Try Again deleteNote");
+      }
     }
   };
 
@@ -323,7 +353,7 @@ const Home = () => {
                 Show Details
               </button>
               <button
-                onClick={() => handleDelete(index)}
+                onClick={() => handleDelete(event._id)}
                 className="btn btn-danger"
               >
                 Delete

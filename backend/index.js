@@ -258,18 +258,17 @@ app.get("/get-all-events", async (req, res) => {
 });
 
 // Delete Event
-app.delete("/delete-event/:eventId", authenticationToken, async (req, res) => {
+app.delete("/delete-event/:eventId", async (req, res) => {
   const eventId = req.params.eventId;
-  const userId = req.user.userId;
 
   try {
-    const event = await Event.findOne({ _id: eventId, userId });
+    const event = await Event.findOne({ _id: eventId });
 
     if (!event) {
       return res.status(404).json({ error: true, message: "Event not found" });
     }
 
-    await Event.deleteOne({ _id: eventId, userId });
+    await Event.deleteOne({ _id: eventId });
 
     return res.json({
       error: false,
