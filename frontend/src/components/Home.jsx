@@ -8,6 +8,7 @@ import "../CSS/navbar.css"; // Import the CSS file
 import Footer from "./Footer";
 import defaultImage from "../images/symbol.jpg"; // Import the default image
 import axiosInstance from "./utils/axiosInstance";
+import ToastMessage from "./ToastMessage"; // Import the ToastMessage component
 
 const Home = () => {
   const [events, setEvents] = useState([]);
@@ -27,6 +28,7 @@ const Home = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState(""); // Add state for success messages
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -47,8 +49,9 @@ const Home = () => {
     e.preventDefault();
     const currentDate = new Date().toISOString().split("T")[0];
     if (eventDetails.date < currentDate) {
-      setError(
-        "Event date cannot be in the past. Please select a future date."
+      showToast(
+        "Event date cannot be in the past. Please select a future date.",
+        "error"
       );
       return;
     }
@@ -58,8 +61,9 @@ const Home = () => {
         event.date === eventDetails.date && event.time === eventDetails.time
     );
     if (conflictEvent) {
-      alert(
-        `Event "${conflictEvent.name}" is already scheduled at this time. Please choose another time.`
+      showToast(
+        `Event "${conflictEvent.name}" is already scheduled at this time. Please choose another time.`,
+        "error"
       );
     } else {
       try {
@@ -85,9 +89,10 @@ const Home = () => {
             image: null,
           });
           setError("");
+          showToast("Event added successfully!", "success");
           document.querySelector('[data-bs-dismiss="modal"]').click();
         } else {
-          setError("Failed to add event");
+          showToast("Failed to add event", "error");
         }
       } catch (error) {
         if (
@@ -95,11 +100,36 @@ const Home = () => {
           error.response.data &&
           error.response.data.message
         ) {
-          setError(error.response.data.message);
+          showToast(error.response.data.message, "error");
         } else {
-          setError("Error adding event: " + error.message);
+          showToast("Error adding event: " + error.message, "error");
         }
       }
+    }
+  };
+
+  const handleDelete = async (eventId) => {
+    if (window.confirm("Are you sure you want to delete this event?")) {
+      axiosInstance
+        .delete(`/delete-event/${eventId}`)
+        .then((response) => {
+          if (response.data && !response.data.error) {
+            showToast("Event deleted successfully!", "success");
+            getAllEvents();
+          } else {
+            showToast("Failed to delete event", "error");
+          }
+        })
+        .catch((error) => {
+          if (error.response && error.response.status === 403) {
+            showToast(
+              "You do not have permission to delete this event",
+              "error"
+            );
+          } else {
+            showToast("Error deleting event: " + error.message, "error");
+          }
+        });
     }
   };
 
@@ -110,23 +140,6 @@ const Home = () => {
 
   const closeModal = () => {
     setShowModal(false);
-  };
-
-  const handleDelete = async (eventId) => {
-    if (window.confirm("Are you sure you want to delete this event?")) {
-      try {
-        const response = await axiosInstance.delete(`/delete-event/${eventId}`);
-
-        if (response.data && !response.data.error) {
-          getAllEvents();
-        } else {
-          console.log("Failed to delete event");
-        }
-      } catch (error) {
-        console.error("Error deleting event:", error);
-        console.log("Try Again handleDelete");
-      }
-    }
   };
 
   const getAllEvents = async () => {
@@ -140,27 +153,26 @@ const Home = () => {
         "Error fetching Events:",
         error.response || error.message || error
       );
-      console.log("Try Again setAllEvents");
+      showToast("Error fetching events: " + error.message, "error");
     }
   };
 
-  const deletNote = async (noteData) => {
-    const noteId = noteData._id;
-    try {
-      const response = await axiosInstance.delete(`/delete-note/${noteId}`);
+  const [toast, setToast] = useState({
+    isShow: false,
+    message: "",
+    type: "",
+  });
 
-      if (response.data && !response.data.error) {
-        return "asdfasdgfvbiaejnfjia";
-      }
-    } catch (error) {
-      if (
-        error.response &&
-        error.response.data &&
-        error.response.data.message
-      ) {
-        console.log("Try Again deleteNote");
-      }
-    }
+  const showToast = (message, type) => {
+    setToast({
+      isShow: true,
+      message,
+      type,
+    });
+
+    setTimeout(() => {
+      setToast({ ...toast, isShow: false });
+    }, 3000); // Hide toast after 3 seconds
   };
 
   useEffect(() => {
@@ -203,7 +215,10 @@ const Home = () => {
                 ></button>
               </div>
               <div className="modal-body">
-                {error && <div className="alert alert-danger">{error}</div>}
+                {/*error && <div className="alert alert-danger">{error}</div>*/}
+                {successMessage && (
+                  <div className="alert alert-success">{successMessage}</div>
+                )}
                 <form onSubmit={handleSubmit}>
                   <div className="form-fields">
                     <label>
@@ -418,6 +433,11 @@ const Home = () => {
       )}
 
       <Footer />
+      <ToastMessage
+        isShow={toast.isShow}
+        message={toast.message}
+        type={toast.type}
+      />
     </div>
   );
 };
