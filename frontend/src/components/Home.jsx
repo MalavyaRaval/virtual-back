@@ -1,91 +1,141 @@
-import React, { useState } from 'react';
-import { FaVideo } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
-import Navbar from './Nav/Navbar';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min';
-import '../CSS/navbar.css'; // Import the CSS file
-import Footer from './Footer';
-import defaultImage from '../images/symbol.jpg'; // Import the default image
+import React, { useEffect, useState } from "react";
+import { FaVideo } from "react-icons/fa";
+import { Link } from "react-router-dom";
+import Navbar from "./Nav/Navbar";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min";
+import "../CSS/navbar.css"; // Import the CSS file
+import Footer from "./Footer";
+import defaultImage from "../images/symbol.jpg"; // Import the default image
+import axiosInstance from "./utils/axiosInstance";
 
 const Home = () => {
   const [events, setEvents] = useState([]);
   const [eventDetails, setEventDetails] = useState({
-    name: '',
-    date: '',
-    time: '',
-    sponsor: '',
-    coSponsor: '',
-    security: '',
-    food: '',
-    custodian: '',
-    description: '',
-    image: null
+    name: "",
+    date: "",
+    time: "",
+    sponsor: "",
+    coSponsor: "",
+    security: "",
+    food: "",
+    custodian: "",
+    description: "",
+    image: null, // Initialize as null
   });
 
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setEventDetails({
       ...eventDetails,
-      [name]: value
+      [name]: value,
     });
   };
 
   const handleImageChange = (e) => {
     setEventDetails({
       ...eventDetails,
-      image: e.target.files[0] // Set the selected image file
+      image: e.target.files[0], // Set the selected image file
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    const currentDate = new Date().toISOString().split("T")[0];
     if (eventDetails.date < currentDate) {
-      setError('Event date cannot be in the past. Please select a future date.');
+      setError(
+        "Event date cannot be in the past. Please select a future date."
+      );
       return;
     }
 
-    const conflictEvent = events.find(event => event.date === eventDetails.date && event.time === eventDetails.time);
+    const conflictEvent = events.find(
+      (event) =>
+        event.date === eventDetails.date && event.time === eventDetails.time
+    );
     if (conflictEvent) {
-      alert(`Event "${conflictEvent.name}" is already scheduled at this time. Please choose another time.`);
+      alert(
+        `Event "${conflictEvent.name}" is already scheduled at this time. Please choose another time.`
+      );
     } else {
-      setEvents([...events, { ...eventDetails, isExpanded: false }]);
-      setEventDetails({
-        name: '',
-        date: '',
-        time: '',
-        sponsor: '',
-        coSponsor: '',
-        security: '',
-        food: '',
-        custodian: '',
-        description: '',
-        image: null 
-      });
-      setError('');
-      document.querySelector('[data-bs-dismiss="modal"]').click(); 
+      try {
+        const formData = new FormData();
+        Object.keys(eventDetails).forEach((key) => {
+          formData.append(key, eventDetails[key]);
+        });
+
+        const response = await axiosInstance.post("/add-event", formData);
+
+        if (response.data && response.data.event) {
+          setEvents([...events, { ...response.data.event, isExpanded: false }]);
+          setEventDetails({
+            name: "",
+            date: "",
+            time: "",
+            sponsor: "",
+            coSponsor: "",
+            security: "",
+            food: "",
+            custodian: "",
+            description: "",
+            image: null,
+          });
+          setError("");
+          document.querySelector('[data-bs-dismiss="modal"]').click();
+        } else {
+          setError("Failed to add event");
+        }
+      } catch (error) {
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.message
+        ) {
+          setError(error.response.data.message);
+        } else {
+          setError("Error adding event: " + error.message);
+        }
+      }
     }
   };
 
   const showDetails = (event) => {
     setSelectedEvent(event);
-    setShowModal(true); 
+    setShowModal(true);
   };
 
   const closeModal = () => {
-    setShowModal(false); 
+    setShowModal(false);
   };
 
   const handleDelete = (index) => {
-    if (window.confirm('Are you sure you want to delete this event?')) {
+    if (window.confirm("Are you sure you want to delete this event?")) {
       setEvents(events.filter((_, i) => i !== index));
     }
   };
+
+  const getAllEvents = async () => {
+    try {
+      const response = await axiosInstance.get("/get-all-events");
+      if (response.data && response.data.events) {
+        setEvents(response.data.events);
+      }
+    } catch (error) {
+      console.error(
+        "Error fetching Events:",
+        error.response || error.message || error
+      );
+      console.log("Try Again setAllEvents");
+    }
+  };
+
+  useEffect(() => {
+    getAllEvents();
+  }, []);
 
   return (
     <div className="page-container">
@@ -102,12 +152,25 @@ const Home = () => {
           </button>
         </div>
 
-        <div className="modal fade" id="createEventModal" tabIndex="-1" aria-labelledby="createEventModalLabel" aria-hidden="true">
+        <div
+          className="modal fade"
+          id="createEventModal"
+          tabIndex="-1"
+          aria-labelledby="createEventModalLabel"
+          aria-hidden="true"
+        >
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title" id="createEventModalLabel">Create Event</h5>
-                <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 className="modal-title" id="createEventModalLabel">
+                  Create Event
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
               </div>
               <div className="modal-body">
                 {error && <div className="alert alert-danger">{error}</div>}
@@ -115,50 +178,122 @@ const Home = () => {
                   <div className="form-fields">
                     <label>
                       Event Name:
-                      <input type="text" name="name" className="form-control" value={eventDetails.name} onChange={handleChange} required />
+                      <input
+                        type="text"
+                        name="name"
+                        className="form-control"
+                        value={eventDetails.name}
+                        onChange={handleChange}
+                        required
+                      />
                     </label>
                     <label>
                       Date:
-                      <input type="date" name="date" className="form-control" value={eventDetails.date} onChange={handleChange} required />
+                      <input
+                        type="date"
+                        name="date"
+                        className="form-control"
+                        value={eventDetails.date}
+                        onChange={handleChange}
+                        required
+                      />
                     </label>
                     <label>
                       Time:
-                      <input type="time" name="time" className="form-control" value={eventDetails.time} onChange={handleChange} required />
+                      <input
+                        type="time"
+                        name="time"
+                        className="form-control"
+                        value={eventDetails.time}
+                        onChange={handleChange}
+                        required
+                      />
                     </label>
                     <label>
                       Sponsor:
-                      <input type="text" name="sponsor" className="form-control" value={eventDetails.sponsor} onChange={handleChange} required />
+                      <input
+                        type="text"
+                        name="sponsor"
+                        className="form-control"
+                        value={eventDetails.sponsor}
+                        onChange={handleChange}
+                        required
+                      />
                     </label>
                     <label>
                       Co-Sponsor:
-                      <input type="text" name="coSponsor" className="form-control" value={eventDetails.coSponsor} onChange={handleChange} />
+                      <input
+                        type="text"
+                        name="coSponsor"
+                        className="form-control"
+                        value={eventDetails.coSponsor}
+                        onChange={handleChange}
+                      />
                     </label>
                     <label>
                       Security:
-                      <input type="text" name="security" className="form-control" value={eventDetails.security} onChange={handleChange} />
+                      <input
+                        type="text"
+                        name="security"
+                        className="form-control"
+                        value={eventDetails.security}
+                        onChange={handleChange}
+                      />
                     </label>
                     <label>
                       Food:
-                      <input type="text" name="food" className="form-control" value={eventDetails.food} onChange={handleChange} />
+                      <input
+                        type="text"
+                        name="food"
+                        className="form-control"
+                        value={eventDetails.food}
+                        onChange={handleChange}
+                      />
                     </label>
                     <label>
                       Custodian:
-                      <input type="text" name="custodian" className="form-control" value={eventDetails.custodian} onChange={handleChange} />
+                      <input
+                        type="text"
+                        name="custodian"
+                        className="form-control"
+                        value={eventDetails.custodian}
+                        onChange={handleChange}
+                      />
                     </label>
                     <label>
                       Description:
-                      <textarea name="description" className="form-control" value={eventDetails.description} onChange={handleChange} required></textarea>
+                      <textarea
+                        name="description"
+                        className="form-control"
+                        value={eventDetails.description}
+                        onChange={handleChange}
+                        required
+                      ></textarea>
                     </label>
                     <label>
                       Image:
-                      <input type="file" name="image" className="form-control" onChange={handleImageChange} accept="image/*" />
+                      <input
+                        type="file"
+                        name="image"
+                        className="form-control"
+                        onChange={handleImageChange}
+                        accept="image/*"
+                      />
                     </label>
                   </div>
-                  <button type="submit" className="btn btn-primary mt-3">Submit</button>
+                  <button type="submit" className="btn btn-primary mt-3">
+                    Submit
+                  </button>
                 </form>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
@@ -169,16 +304,28 @@ const Home = () => {
             <div key={index} className="event-box p-3 mb-3 border rounded">
               <div className="image-container">
                 <img
-                  src={event.image ? URL.createObjectURL(event.image) : defaultImage}
+                  src={
+                    event.image
+                      ? typeof event.image === "string"
+                        ? event.image
+                        : URL.createObjectURL(event.image)
+                      : defaultImage
+                  }
                   alt="Event"
                   className="img-fluid event-image"
                 />
               </div>
               <h5 className="event-name">{event.name}</h5>
-              <button onClick={() => showDetails(event)} className="btn btn-link">
+              <button
+                onClick={() => showDetails(event)}
+                className="btn btn-link"
+              >
                 Show Details
               </button>
-              <button onClick={() => handleDelete(index)} className="btn btn-danger">
+              <button
+                onClick={() => handleDelete(index)}
+                className="btn btn-danger"
+              >
                 Delete
               </button>
               <div className="livestream-container">
@@ -191,35 +338,49 @@ const Home = () => {
         </div>
       </div>
 
-      {selectedEvent && (
-        <div className={`modal fade ${showModal ? 'show d-block' : ''}`} id="eventDetailsModal" tabIndex="-1" aria-labelledby="eventDetailsModalLabel" aria-hidden={!showModal}>
+      {showModal && selectedEvent && (
+        <div className="modal show" style={{ display: "block" }}>
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title" id="eventDetailsModalLabel">{selectedEvent.name}</h5>
+                <h5 className="modal-title">{selectedEvent.name}</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={closeModal}
+                ></button>
               </div>
               <div className="modal-body">
-                <p><strong>Date:</strong> {selectedEvent.date}</p>
-                <p><strong>Time:</strong> {selectedEvent.time}</p>
-                <p><strong>Sponsor:</strong> {selectedEvent.sponsor}</p>
-                <p><strong>Co-Sponsor:</strong> {selectedEvent.coSponsor}</p>
-                <p><strong>Security:</strong> {selectedEvent.security}</p>
-                <p><strong>Food:</strong> {selectedEvent.food}</p>
-                <p><strong>Custodian:</strong> {selectedEvent.custodian}</p>
-                <p><strong>Description:</strong> {selectedEvent.description}</p>
-                <div className="modal-image-container">
+                <p>Date: {selectedEvent.date}</p>
+                <p>Time: {selectedEvent.time}</p>
+                <p>Sponsor: {selectedEvent.sponsor}</p>
+                <p>Co-Sponsor: {selectedEvent.coSponsor}</p>
+                <p>Security: {selectedEvent.security}</p>
+                <p>Food: {selectedEvent.food}</p>
+                <p>Custodian: {selectedEvent.custodian}</p>
+                <p>Description: {selectedEvent.description}</p>
+                <div className="image-container">
                   <img
-                    src={selectedEvent.image ? URL.createObjectURL(selectedEvent.image) : defaultImage}
+                    src={
+                      selectedEvent.image
+                        ? typeof selectedEvent.image === "string"
+                          ? selectedEvent.image
+                          : URL.createObjectURL(selectedEvent.image)
+                        : defaultImage
+                    }
                     alt="Event"
-                    className="img-fluid modal-event-image"
+                    className="img-fluid event-image"
                   />
                 </div>
-                <Link to="/camera" className="btn btn-primary mt-3">
-                  <FaVideo size={20} /> Livestream
-                </Link>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={closeModal}>Close</button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closeModal}
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

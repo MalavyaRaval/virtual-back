@@ -33,3 +33,7 @@
   font-size: 0.8rem;
   vertical-align: super;
 }
+
+.error {
+  color: red;
+}
