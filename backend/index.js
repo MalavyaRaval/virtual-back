@@ -177,7 +177,6 @@ app.post("/add-event", authenticationToken, async (req, res) => {
       food,
       custodian,
       description,
-      image,
       userId,
     });
 
